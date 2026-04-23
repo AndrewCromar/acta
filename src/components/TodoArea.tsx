@@ -12,15 +12,21 @@ import { db } from "@/lib/db";
 import { setSortMode } from "@/lib/prefs";
 import { sync } from "@/lib/sync";
 
-export type SortMode = "created" | "due" | "alpha";
+export type SortMode = "created" | "due" | "due_grouped" | "alpha";
 
 const SORT_LABELS: Record<SortMode, string> = {
   created: "Created",
   due: "Due date",
+  due_grouped: "Due by day",
   alpha: "A–Z",
 };
 
-const VALID_SORTS: readonly SortMode[] = ["created", "due", "alpha"];
+const VALID_SORTS: readonly SortMode[] = [
+  "created",
+  "due",
+  "due_grouped",
+  "alpha",
+];
 
 type ModalState =
   | { kind: "none" }

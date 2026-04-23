@@ -14,6 +14,7 @@ function sortActive(todos: Todo[], mode: SortMode): Todo[] {
   const copy = [...todos];
   switch (mode) {
     case "due":
+    case "due_grouped":
       copy.sort((a, b) => {
         if (a.due_at === null && b.due_at === null)
           return b.created_at - a.created_at;
@@ -37,6 +38,64 @@ function sortActive(todos: Todo[], mode: SortMode): Todo[] {
 
 function sortCompleted(todos: Todo[]): Todo[] {
   return [...todos].sort((a, b) => b.updated_at - a.updated_at);
+}
+
+const NO_DUE_KEY = "no-due";
+
+function localDayKey(ms: number): string {
+  const d = new Date(ms);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function labelForDay(key: string): string {
+  if (key === NO_DUE_KEY) return "No due date";
+  const [y, m, d] = key.split("-").map(Number);
+  const target = new Date(y, m - 1, d);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.round(
+    (target.getTime() - today.getTime()) / 86400000,
+  );
+
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Tomorrow";
+  if (diffDays === -1) return "Yesterday";
+  if (diffDays >= -6 && diffDays <= 6) {
+    return target.toLocaleDateString(undefined, { weekday: "long" });
+  }
+  const sameYear = target.getFullYear() === today.getFullYear();
+  return target.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    ...(sameYear ? {} : { year: "numeric" }),
+  });
+}
+
+type DayGroup = { key: string; label: string; todos: Todo[] };
+
+function groupByDay(todos: Todo[]): DayGroup[] {
+  const buckets = new Map<string, Todo[]>();
+  for (const t of todos) {
+    const key = t.due_at === null ? NO_DUE_KEY : localDayKey(t.due_at);
+    const list = buckets.get(key);
+    if (list) list.push(t);
+    else buckets.set(key, [t]);
+  }
+  const nullTodos = buckets.get(NO_DUE_KEY);
+  buckets.delete(NO_DUE_KEY);
+  const dayKeys = [...buckets.keys()].sort();
+  const groups: DayGroup[] = dayKeys.map((key) => ({
+    key,
+    label: labelForDay(key),
+    todos: buckets.get(key) ?? [],
+  }));
+  if (nullTodos && nullTodos.length > 0) {
+    groups.push({ key: NO_DUE_KEY, label: "No due date", todos: nullTodos });
+  }
+  return groups;
 }
 
 export function TodoList({
@@ -111,7 +170,33 @@ export function TodoList({
 
   return (
     <div className="flex flex-col gap-4 min-w-0 w-full">
-      {active.length > 0 ? (
+      {active.length === 0 ? (
+        <p className="text-sm text-neutral-400 text-center py-4">
+          Nothing to do. {completed.length > 0 && `${completed.length} done.`}
+        </p>
+      ) : sort === "due_grouped" ? (
+        <div className="flex flex-col gap-4 min-w-0 w-full">
+          {groupByDay(active).map((group) => (
+            <section
+              key={group.key}
+              className="flex flex-col gap-1 min-w-0 w-full"
+            >
+              <h3 className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400 px-3">
+                {group.label}
+              </h3>
+              <ul className="flex flex-col gap-1 min-w-0 w-full">
+                {group.todos.map((todo) => (
+                  <TodoItem
+                    key={todo.id}
+                    todo={todo}
+                    onOpen={() => onOpenTodo(todo.id)}
+                  />
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      ) : (
         <ul className="flex flex-col gap-1 min-w-0 w-full">
           {active.map((todo) => (
             <TodoItem
@@ -121,10 +206,6 @@ export function TodoList({
             />
           ))}
         </ul>
-      ) : (
-        <p className="text-sm text-neutral-400 text-center py-4">
-          Nothing to do. {completed.length > 0 && `${completed.length} done.`}
-        </p>
       )}
 
       {completed.length > 0 && (

@@ -3,7 +3,7 @@ import { getUser } from "@/lib/auth";
 import { getDb } from "@/lib/db-server";
 import { userPrefs } from "@/lib/schema";
 
-const VALID_SORT = new Set(["created", "due", "alpha"]);
+const VALID_SORT = new Set(["created", "due", "due_grouped", "alpha"]);
 
 export async function GET() {
   const user = await getUser();

@@ -1,7 +1,12 @@
 import { db } from "./db";
 import type { SortMode } from "@/components/TodoArea";
 
-const VALID: readonly SortMode[] = ["created", "due", "alpha"];
+const VALID: readonly SortMode[] = [
+  "created",
+  "due",
+  "due_grouped",
+  "alpha",
+];
 const DEFAULT_SORT: SortMode = "created";
 
 function coerce(value: unknown): SortMode {
