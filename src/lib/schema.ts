@@ -17,6 +17,7 @@ export const todos = pgTable(
     description: text("description").notNull().default(""),
     completed: boolean("completed").notNull().default(false),
     due_at: timestamp("due_at", { withTimezone: true }),
+    notified_at: timestamp("notified_at", { withTimezone: true }),
     created_at: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

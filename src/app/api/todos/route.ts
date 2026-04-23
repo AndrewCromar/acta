@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
   const db = getDb();
   const existing = await db
-    .select({ user_id: todos.user_id })
+    .select({ user_id: todos.user_id, due_at: todos.due_at })
     .from(todos)
     .where(eq(todos.id, body.id))
     .limit(1);
@@ -48,13 +48,18 @@ export async function POST(request: Request) {
   }
 
   const now = new Date();
+  const newDue = body.due_at ? new Date(body.due_at) : null;
+  const existingDue = existing[0]?.due_at ?? null;
+  const dueChanged =
+    (newDue?.getTime() ?? null) !== (existingDue?.getTime() ?? null);
+
   const values = {
     id: body.id,
     user_id: user.id,
     title: body.title,
     description: typeof body.description === "string" ? body.description : "",
     completed: !!body.completed,
-    due_at: body.due_at ? new Date(body.due_at) : null,
+    due_at: newDue,
     created_at: body.created_at ? new Date(body.created_at) : now,
     updated_at: body.updated_at ? new Date(body.updated_at) : now,
   };
@@ -70,6 +75,7 @@ export async function POST(request: Request) {
         completed: values.completed,
         due_at: values.due_at,
         updated_at: values.updated_at,
+        ...(dueChanged ? { notified_at: null } : {}),
       },
       setWhere: and(eq(todos.id, body.id), eq(todos.user_id, user.id)),
     })
