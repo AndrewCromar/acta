@@ -14,6 +14,7 @@ export const todos = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     user_id: integer("user_id").notNull(),
     title: text("title").notNull(),
+    description: text("description").notNull().default(""),
     completed: boolean("completed").notNull().default(false),
     due_at: timestamp("due_at", { withTimezone: true }),
     created_at: timestamp("created_at", { withTimezone: true })

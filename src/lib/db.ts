@@ -5,6 +5,7 @@ export type SyncStatus = "synced" | "pending" | "deleting";
 export type Todo = {
   id: string;
   title: string;
+  description: string;
   completed: boolean;
   due_at: number | null;
   created_at: number;
@@ -39,6 +40,20 @@ db.version(2)
       .toCollection()
       .modify((todo: Partial<Todo>) => {
         if (todo.sync_status === undefined) todo.sync_status = "synced";
+      });
+  });
+
+db.version(3)
+  .stores({
+    todos: "id, completed, due_at, created_at, updated_at, sync_status",
+    meta: "key",
+  })
+  .upgrade((tx) => {
+    return tx
+      .table("todos")
+      .toCollection()
+      .modify((todo: Partial<Todo>) => {
+        if (todo.description === undefined) todo.description = "";
       });
   });
 

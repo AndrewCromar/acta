@@ -1,6 +1,9 @@
 import { db, type Todo } from "./db";
 
-export async function createTodo(title: string): Promise<Todo> {
+export async function createTodo(
+  title: string,
+  extra: { description?: string; due_at?: number | null } = {},
+): Promise<Todo> {
   const trimmed = title.trim();
   if (!trimmed) throw new Error("Title cannot be empty");
 
@@ -8,8 +11,9 @@ export async function createTodo(title: string): Promise<Todo> {
   const todo: Todo = {
     id: crypto.randomUUID(),
     title: trimmed,
+    description: extra.description?.trim() ?? "",
     completed: false,
-    due_at: null,
+    due_at: extra.due_at ?? null,
     created_at: now,
     updated_at: now,
     sync_status: "pending",
@@ -28,14 +32,33 @@ export async function toggleTodo(id: string): Promise<void> {
   });
 }
 
-export async function renameTodo(id: string, title: string): Promise<void> {
-  const trimmed = title.trim();
-  if (!trimmed) return;
-  await db.todos.update(id, {
-    title: trimmed,
+export type TodoPatch = {
+  title?: string;
+  description?: string;
+  due_at?: number | null;
+};
+
+export async function updateTodo(id: string, patch: TodoPatch): Promise<void> {
+  const update: Partial<Todo> = {
     updated_at: Date.now(),
     sync_status: "pending",
-  });
+  };
+  if (patch.title !== undefined) {
+    const trimmed = patch.title.trim();
+    if (!trimmed) return;
+    update.title = trimmed;
+  }
+  if (patch.description !== undefined) {
+    update.description = patch.description;
+  }
+  if (patch.due_at !== undefined) {
+    update.due_at = patch.due_at;
+  }
+  await db.todos.update(id, update);
+}
+
+export async function renameTodo(id: string, title: string): Promise<void> {
+  await updateTodo(id, { title });
 }
 
 export async function deleteTodo(id: string): Promise<void> {

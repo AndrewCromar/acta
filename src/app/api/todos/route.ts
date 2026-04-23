@@ -15,6 +15,7 @@ export async function GET() {
 type UpsertBody = {
   id: string;
   title: string;
+  description?: string;
   completed?: boolean;
   due_at?: string | null;
   created_at?: string;
@@ -51,6 +52,7 @@ export async function POST(request: Request) {
     id: body.id,
     user_id: user.id,
     title: body.title,
+    description: typeof body.description === "string" ? body.description : "",
     completed: !!body.completed,
     due_at: body.due_at ? new Date(body.due_at) : null,
     created_at: body.created_at ? new Date(body.created_at) : now,
@@ -64,6 +66,7 @@ export async function POST(request: Request) {
       target: todos.id,
       set: {
         title: values.title,
+        description: values.description,
         completed: values.completed,
         due_at: values.due_at,
         updated_at: values.updated_at,

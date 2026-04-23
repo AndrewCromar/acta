@@ -4,6 +4,7 @@ type ServerTodo = {
   id: string;
   user_id: number;
   title: string;
+  description: string | null;
   completed: boolean;
   due_at: string | null;
   created_at: string;
@@ -14,6 +15,7 @@ function serverToLocal(s: ServerTodo): Todo {
   return {
     id: s.id,
     title: s.title,
+    description: s.description ?? "",
     completed: s.completed,
     due_at: s.due_at ? new Date(s.due_at).getTime() : null,
     created_at: new Date(s.created_at).getTime(),
@@ -26,6 +28,7 @@ function localToUpsertBody(t: Todo) {
   return {
     id: t.id,
     title: t.title,
+    description: t.description,
     completed: t.completed,
     due_at: t.due_at ? new Date(t.due_at).toISOString() : null,
     created_at: new Date(t.created_at).toISOString(),
