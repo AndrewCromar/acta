@@ -53,7 +53,9 @@ export function TagFilter({
                 : "border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-900"
             }`}
           >
-            {tag.name}
+            <span className="truncate max-w-[10rem] inline-block align-middle">
+              {tag.name}
+            </span>
           </button>
         );
       })}

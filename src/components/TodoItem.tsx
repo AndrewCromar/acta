@@ -1,25 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { deleteTodo, toggleTodo, updateTodo } from "@/lib/todos";
-import {
-  parseRule,
-  stringifyRule,
-  summarizeRule,
-  type RecurrenceFreq,
-  type RecurrenceRule,
-} from "@/lib/recurrence";
+import { toggleTodo } from "@/lib/todos";
+import { parseRule, summarizeRule } from "@/lib/recurrence";
 import { getTagsForTodo } from "@/lib/tags";
 import type { Tag, Todo } from "@/lib/db";
-import { TagInput } from "./TagInput";
-
-function toLocalInputValue(ms: number | null): string {
-  if (ms === null) return "";
-  const d = new Date(ms);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 function formatDueShort(ms: number): string {
   const d = new Date(ms);
@@ -36,96 +21,24 @@ function formatDueShort(ms: number): string {
 
 export function TodoItem({
   todo,
-  expanded,
-  onExpand,
-  onCollapse,
+  onOpen,
 }: {
   todo: Todo;
-  expanded: boolean;
-  onExpand: () => void;
-  onCollapse: () => void;
+  onOpen: () => void;
 }) {
-  const [title, setTitle] = useState(todo.title);
-  const [description, setDescription] = useState(todo.description);
-  const [dueInput, setDueInput] = useState(toLocalInputValue(todo.due_at));
   const rule = parseRule(todo.recurrence_rule);
   const tags = useLiveQuery(
     () => getTagsForTodo(todo.id),
     [todo.id],
     [] as Tag[],
   );
-  const titleRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!expanded) {
-      setTitle(todo.title);
-      setDescription(todo.description);
-      setDueInput(toLocalInputValue(todo.due_at));
-    }
-  }, [expanded, todo.title, todo.description, todo.due_at]);
-
-  useEffect(() => {
-    if (expanded) titleRef.current?.focus();
-  }, [expanded]);
-
-  async function commitTitle() {
-    const trimmed = title.trim();
-    if (trimmed && trimmed !== todo.title) {
-      await updateTodo(todo.id, { title: trimmed });
-    } else if (!trimmed) {
-      setTitle(todo.title);
-    }
-  }
-
-  async function commitDescription() {
-    if (description !== todo.description) {
-      await updateTodo(todo.id, { description });
-    }
-  }
-
-  async function commitDue(value: string) {
-    setDueInput(value);
-    const newDue = value ? new Date(value).getTime() : null;
-    if (newDue !== todo.due_at) {
-      await updateTodo(todo.id, { due_at: newDue });
-    }
-  }
-
-  async function handleFreqChange(freq: RecurrenceFreq | "") {
-    if (!freq) {
-      await updateTodo(todo.id, { recurrence_rule: null });
-      return;
-    }
-    const next: RecurrenceRule = { freq, until: rule?.until ?? null };
-    await updateTodo(todo.id, { recurrence_rule: stringifyRule(next) });
-  }
-
-  async function handleUntilChange(value: string) {
-    if (!rule) return;
-    const until = value ? new Date(value).getTime() : null;
-    const next: RecurrenceRule = { freq: rule.freq, until };
-    await updateTodo(todo.id, { recurrence_rule: stringifyRule(next) });
-  }
-
-  function toUntilInput(ms: number | null): string {
-    if (ms === null) return "";
-    const d = new Date(ms);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  }
 
   const overdue =
     todo.due_at !== null && !todo.completed && todo.due_at < Date.now();
 
   return (
-    <li
-      className={`rounded-lg border transition-colors ${
-        expanded
-          ? "border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900"
-          : "border-transparent hover:bg-neutral-100 dark:hover:bg-neutral-900"
-      }`}
-    >
-      <div className="flex items-center gap-3 py-2 px-3">
+    <li className="rounded-lg border border-transparent hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors">
+      <div className="flex items-center gap-3 py-2 px-3 min-w-0">
         <label className="relative flex-shrink-0 cursor-pointer inline-flex">
           <input
             type="checkbox"
@@ -152,178 +65,71 @@ export function TodoItem({
           </span>
         </label>
 
-        {expanded ? (
-          <input
-            ref={titleRef}
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={commitTitle}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                commitTitle();
-                onCollapse();
-              } else if (e.key === "Escape") {
-                e.preventDefault();
-                setTitle(todo.title);
-                onCollapse();
-              }
-            }}
-            className="flex-1 bg-transparent outline-none border-b border-neutral-400 text-base"
-          />
-        ) : (
-          <button
-            type="button"
-            onClick={onExpand}
-            className="flex-1 min-w-0 text-left cursor-text flex flex-col"
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex-1 min-w-0 text-left cursor-pointer flex flex-col"
+        >
+          <span
+            className={`truncate text-sm ${
+              todo.completed
+                ? "line-through text-neutral-400 dark:text-neutral-500"
+                : "text-neutral-900 dark:text-neutral-100"
+            }`}
           >
+            {todo.title}
+          </span>
+          {todo.description && (
+            <span className="truncate text-xs text-neutral-500 dark:text-neutral-400">
+              {todo.description}
+            </span>
+          )}
+        </button>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {tags.length > 0 && (
             <span
-              className={`truncate text-sm ${
-                todo.completed
-                  ? "line-through text-neutral-400 dark:text-neutral-500"
-                  : "text-neutral-900 dark:text-neutral-100"
+              aria-label={`Tagged: ${tags.map((t) => t.name).join(", ")}`}
+              title={tags.map((t) => t.name).join(", ")}
+              className="h-1.5 w-1.5 rounded-full bg-neutral-500 dark:bg-neutral-400"
+            />
+          )}
+          {rule && (
+            <span
+              aria-label="Repeats"
+              title={summarizeRule(rule)}
+              className="text-neutral-500 dark:text-neutral-400"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-3 w-3"
+              >
+                <polyline points="23 4 23 10 17 10" />
+                <polyline points="1 20 1 14 7 14" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" />
+                <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14" />
+              </svg>
+            </span>
+          )}
+          {todo.due_at !== null && (
+            <span
+              className={`text-xs whitespace-nowrap ${
+                overdue
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-neutral-500 dark:text-neutral-400"
               }`}
             >
-              {todo.title}
+              {formatDueShort(todo.due_at)}
             </span>
-            {todo.description && (
-              <span className="truncate text-xs text-neutral-500 dark:text-neutral-400">
-                {todo.description}
-              </span>
-            )}
-          </button>
-        )}
-
-        {!expanded && (
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {tags.length > 0 && (
-              <span
-                aria-label={`Tagged: ${tags.map((t) => t.name).join(", ")}`}
-                title={tags.map((t) => t.name).join(", ")}
-                className="h-1.5 w-1.5 rounded-full bg-neutral-500 dark:bg-neutral-400"
-              />
-            )}
-            {rule && (
-              <span
-                aria-label="Repeats"
-                title={summarizeRule(rule)}
-                className="text-neutral-500 dark:text-neutral-400"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-3 w-3"
-                >
-                  <polyline points="23 4 23 10 17 10" />
-                  <polyline points="1 20 1 14 7 14" />
-                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" />
-                  <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14" />
-                </svg>
-              </span>
-            )}
-            {todo.due_at !== null && (
-              <span
-                className={`text-xs ${
-                  overdue
-                    ? "text-red-600 dark:text-red-400"
-                    : "text-neutral-500 dark:text-neutral-400"
-                }`}
-              >
-                {formatDueShort(todo.due_at)}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {expanded && (
-        <div className="flex flex-col gap-3 px-3 pb-3 pl-10">
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-neutral-500 dark:text-neutral-400">
-              Description
-            </span>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onBlur={commitDescription}
-              placeholder="Add details…"
-              rows={2}
-              className="w-full rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-2 py-1 text-base outline-none focus:border-neutral-500 resize-y"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-neutral-500 dark:text-neutral-400">
-              Due
-            </span>
-            <input
-              type="datetime-local"
-              value={dueInput}
-              onChange={(e) => commitDue(e.target.value)}
-              className="w-full max-w-full min-w-0 box-border rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-2 py-1 text-base outline-none focus:border-neutral-500"
-            />
-          </label>
-
-          <div className="flex flex-col gap-2">
-            <span className="text-xs text-neutral-500 dark:text-neutral-400">
-              Repeats
-            </span>
-            <div className="flex gap-2">
-              <select
-                value={rule?.freq ?? ""}
-                onChange={(e) =>
-                  handleFreqChange(e.target.value as RecurrenceFreq | "")
-                }
-                className="font-sans flex-1 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-2 py-1 text-base outline-none focus:border-neutral-500"
-              >
-                <option value="">Never</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-              </select>
-              {rule && (
-                <input
-                  type="date"
-                  value={toUntilInput(rule.until)}
-                  onChange={(e) => handleUntilChange(e.target.value)}
-                  aria-label="Repeat until"
-                  className="flex-1 min-w-0 box-border rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-2 py-1 text-base outline-none focus:border-neutral-500"
-                />
-              )}
-            </div>
-          </div>
-
-          <TagInput todoId={todo.id} />
-
-          <div className="flex items-center justify-between pt-1">
-            <button
-              type="button"
-              onClick={() => deleteTodo(todo.id)}
-              className="text-sm text-red-600 hover:text-red-700"
-            >
-              Delete
-            </button>
-            <button
-              type="button"
-              onClick={async () => {
-                await commitTitle();
-                await commitDescription();
-                onCollapse();
-              }}
-              className="text-sm rounded-md bg-black text-white px-3 py-1 hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200"
-            >
-              Done
-            </button>
-          </div>
+          )}
         </div>
-      )}
+      </div>
     </li>
   );
 }

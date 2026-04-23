@@ -41,16 +41,12 @@ function sortCompleted(todos: Todo[]): Todo[] {
 
 export function TodoList({
   sort,
-  expandedId,
   activeTagIds,
-  onExpand,
-  onCollapse,
+  onOpenTodo,
 }: {
   sort: SortMode;
-  expandedId: string | null;
   activeTagIds: Set<string>;
-  onExpand: (id: string) => void;
-  onCollapse: () => void;
+  onOpenTodo: (id: string) => void;
 }) {
   const [showCompleted, setShowCompleted] = useState(false);
   const [completedVisible, setCompletedVisible] = useState(COMPLETED_PAGE_SIZE);
@@ -121,9 +117,7 @@ export function TodoList({
             <TodoItem
               key={todo.id}
               todo={todo}
-              expanded={expandedId === todo.id}
-              onExpand={() => onExpand(todo.id)}
-              onCollapse={onCollapse}
+              onOpen={() => onOpenTodo(todo.id)}
             />
           ))}
         </ul>
@@ -173,9 +167,7 @@ export function TodoList({
                   <TodoItem
                     key={todo.id}
                     todo={todo}
-                    expanded={expandedId === todo.id}
-                    onExpand={() => onExpand(todo.id)}
-                    onCollapse={onCollapse}
+                    onOpen={() => onOpenTodo(todo.id)}
                   />
                 ))}
               </ul>
