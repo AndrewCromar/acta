@@ -1,4 +1,4 @@
-import Dexie, { type EntityTable } from "dexie";
+import Dexie, { type EntityTable, type Table } from "dexie";
 
 export type SyncStatus = "synced" | "pending" | "deleting";
 
@@ -20,9 +20,24 @@ export type Meta = {
   value: string | number | null;
 };
 
+export type Tag = {
+  id: string;
+  name: string;
+  created_at: number;
+  sync_status: SyncStatus;
+};
+
+export type TodoTag = {
+  todo_id: string;
+  tag_id: string;
+  sync_status: SyncStatus;
+};
+
 type TodoDB = Dexie & {
   todos: EntityTable<Todo, "id">;
   meta: EntityTable<Meta, "key">;
+  tags: EntityTable<Tag, "id">;
+  todo_tags: Table<TodoTag, [string, string]>;
 };
 
 const db = new Dexie("todo_app") as TodoDB;
@@ -74,5 +89,12 @@ db.version(4)
           todo.recurrence_series_id = null;
       });
   });
+
+db.version(5).stores({
+  todos: "id, completed, due_at, created_at, updated_at, sync_status",
+  meta: "key",
+  tags: "id, name, sync_status",
+  todo_tags: "[todo_id+tag_id], todo_id, tag_id, sync_status",
+});
 
 export { db };

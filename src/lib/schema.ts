@@ -6,6 +6,8 @@ import {
   boolean,
   timestamp,
   index,
+  primaryKey,
+  unique,
 } from "drizzle-orm/pg-core";
 
 export const todos = pgTable(
@@ -32,6 +34,34 @@ export const todos = pgTable(
 
 export type ServerTodo = typeof todos.$inferSelect;
 export type NewServerTodo = typeof todos.$inferInsert;
+
+export const tags = pgTable(
+  "tags",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    user_id: integer("user_id").notNull(),
+    name: text("name").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("tags_user_idx").on(t.user_id),
+    unique("tags_user_name_unique").on(t.user_id, t.name),
+  ],
+);
+
+export const todoTags = pgTable(
+  "todo_tags",
+  {
+    todo_id: uuid("todo_id").notNull(),
+    tag_id: uuid("tag_id").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.todo_id, t.tag_id] }),
+    index("todo_tags_tag_idx").on(t.tag_id),
+  ],
+);
 
 export const userPrefs = pgTable("user_prefs", {
   user_id: integer("user_id").primaryKey(),

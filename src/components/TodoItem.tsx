@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
 import { deleteTodo, toggleTodo, updateTodo } from "@/lib/todos";
 import {
   parseRule,
@@ -9,7 +10,9 @@ import {
   type RecurrenceFreq,
   type RecurrenceRule,
 } from "@/lib/recurrence";
-import type { Todo } from "@/lib/db";
+import { getTagsForTodo } from "@/lib/tags";
+import type { Tag, Todo } from "@/lib/db";
+import { TagInput } from "./TagInput";
 
 function toLocalInputValue(ms: number | null): string {
   if (ms === null) return "";
@@ -46,6 +49,11 @@ export function TodoItem({
   const [description, setDescription] = useState(todo.description);
   const [dueInput, setDueInput] = useState(toLocalInputValue(todo.due_at));
   const rule = parseRule(todo.recurrence_rule);
+  const tags = useLiveQuery(
+    () => getTagsForTodo(todo.id),
+    [todo.id],
+    [] as Tag[],
+  );
   const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -189,6 +197,19 @@ export function TodoItem({
 
         {!expanded && (
           <div className="flex items-center gap-2 flex-shrink-0">
+            {tags.slice(0, 2).map((tag) => (
+              <span
+                key={tag.id}
+                className="rounded-full bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-[10px] px-2 py-0.5"
+              >
+                {tag.name}
+              </span>
+            ))}
+            {tags.length > 2 && (
+              <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                +{tags.length - 2}
+              </span>
+            )}
             {rule && (
               <span
                 aria-label="Repeats"
@@ -284,6 +305,8 @@ export function TodoItem({
               )}
             </div>
           </div>
+
+          <TagInput todoId={todo.id} />
 
           <div className="flex items-center justify-between pt-1">
             <button

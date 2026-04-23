@@ -117,6 +117,156 @@ async function pullAll(): Promise<void> {
   });
 }
 
+type ServerTag = {
+  id: string;
+  user_id: number;
+  name: string;
+  created_at: string;
+};
+
+type ServerTodoTag = {
+  todo_id: string;
+  tag_id: string;
+};
+
+async function pushPendingTags(): Promise<void> {
+  const pending = await db.tags.where("sync_status").equals("pending").toArray();
+  for (const t of pending) {
+    try {
+      const res = await fetch("/api/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: t.id, name: t.name }),
+      });
+      if (res.ok) await db.tags.update(t.id, { sync_status: "synced" });
+    } catch (err) {
+      console.warn("tag push failed", t.id, err);
+    }
+  }
+
+  const deleting = await db.tags
+    .where("sync_status")
+    .equals("deleting")
+    .toArray();
+  for (const t of deleting) {
+    try {
+      const res = await fetch(
+        `/api/tags/${encodeURIComponent(t.id)}`,
+        { method: "DELETE" },
+      );
+      if (res.ok || res.status === 404) await db.tags.delete(t.id);
+    } catch (err) {
+      console.warn("tag delete failed", t.id, err);
+    }
+  }
+}
+
+async function pushPendingTodoTags(): Promise<void> {
+  const pending = await db.todo_tags
+    .where("sync_status")
+    .equals("pending")
+    .toArray();
+  for (const l of pending) {
+    try {
+      const res = await fetch("/api/todo-tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ todo_id: l.todo_id, tag_id: l.tag_id }),
+      });
+      if (res.ok) {
+        await db.todo_tags.update([l.todo_id, l.tag_id], {
+          sync_status: "synced",
+        });
+      }
+    } catch (err) {
+      console.warn("todo_tag push failed", l, err);
+    }
+  }
+
+  const deleting = await db.todo_tags
+    .where("sync_status")
+    .equals("deleting")
+    .toArray();
+  for (const l of deleting) {
+    try {
+      const res = await fetch(
+        `/api/todo-tags?todo_id=${encodeURIComponent(l.todo_id)}&tag_id=${encodeURIComponent(l.tag_id)}`,
+        { method: "DELETE" },
+      );
+      if (res.ok || res.status === 404) {
+        await db.todo_tags.delete([l.todo_id, l.tag_id]);
+      }
+    } catch (err) {
+      console.warn("todo_tag delete failed", l, err);
+    }
+  }
+}
+
+async function pullTagsAndLinks(): Promise<void> {
+  try {
+    const res = await fetch("/api/tags", { cache: "no-store" });
+    if (!res.ok) return;
+    const data = (await res.json()) as {
+      tags: ServerTag[];
+      links: ServerTodoTag[];
+    };
+
+    const remoteTagIds = new Set(data.tags.map((t) => t.id));
+    await db.transaction("rw", db.tags, async () => {
+      for (const t of data.tags) {
+        const local = await db.tags.get(t.id);
+        if (!local || local.sync_status === "synced") {
+          await db.tags.put({
+            id: t.id,
+            name: t.name,
+            created_at: new Date(t.created_at).getTime(),
+            sync_status: "synced",
+          });
+        }
+      }
+      const all = await db.tags.toArray();
+      for (const local of all) {
+        if (local.sync_status === "synced" && !remoteTagIds.has(local.id)) {
+          await db.tags.delete(local.id);
+        }
+      }
+    });
+
+    const remoteLinkKey = (l: ServerTodoTag) => `${l.todo_id}|${l.tag_id}`;
+    const remoteSet = new Set(data.links.map(remoteLinkKey));
+
+    await db.transaction("rw", db.todo_tags, async () => {
+      for (const l of data.links) {
+        const local = await db.todo_tags.get([l.todo_id, l.tag_id]);
+        if (!local || local.sync_status === "synced") {
+          await db.todo_tags.put({
+            todo_id: l.todo_id,
+            tag_id: l.tag_id,
+            sync_status: "synced",
+          });
+        }
+      }
+      const all = await db.todo_tags.toArray();
+      for (const local of all) {
+        if (
+          local.sync_status === "synced" &&
+          !remoteSet.has(`${local.todo_id}|${local.tag_id}`)
+        ) {
+          await db.todo_tags.delete([local.todo_id, local.tag_id]);
+        }
+      }
+    });
+  } catch (err) {
+    console.warn("tags pull failed", err);
+  }
+}
+
+async function syncTags(): Promise<void> {
+  await pushPendingTags();
+  await pushPendingTodoTags();
+  await pullTagsAndLinks();
+}
+
 async function syncPrefs(): Promise<void> {
   const local = await getLocalPrefsState();
 
@@ -171,6 +321,8 @@ export async function sync(): Promise<void> {
     const stored = await db.meta.get("user_id");
     if (stored?.value !== data.user.id) {
       await db.todos.clear();
+      await db.tags.clear();
+      await db.todo_tags.clear();
       await Promise.all([
         db.meta.delete("sort_mode"),
         db.meta.delete("sort_mode_updated_at"),
@@ -181,6 +333,7 @@ export async function sync(): Promise<void> {
 
     await pushDirty();
     await pullAll();
+    await syncTags();
     await syncPrefs();
   } finally {
     syncing = false;

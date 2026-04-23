@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { AddTodo } from "./AddTodo";
 import { EnableNotifications } from "./EnableNotifications";
+import { TagFilter } from "./TagFilter";
 import { ThemeToggle } from "./ThemeToggle";
 import { TodoList } from "./TodoList";
 import { db } from "@/lib/db";
@@ -31,6 +32,18 @@ export function TodoArea() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTagIds, setActiveTagIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  function toggleTag(id: string) {
+    setActiveTagIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   async function handleSortChange(mode: SortMode) {
     await setSortMode(mode);
@@ -98,12 +111,18 @@ export function TodoArea() {
         </div>
 
         <AddTodo />
+        <TagFilter
+          activeTagIds={activeTagIds}
+          onToggle={toggleTag}
+          onClear={() => setActiveTagIds(new Set())}
+        />
       </div>
 
       <div className="pt-3">
         <TodoList
           sort={sort}
           expandedId={expandedId}
+          activeTagIds={activeTagIds}
           onExpand={setExpandedId}
           onCollapse={() => setExpandedId(null)}
         />

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, type Todo } from "@/lib/db";
+import { db, type Todo, type TodoTag } from "@/lib/db";
+import { buildLinksByTodo, matchesTagFilter } from "@/lib/tags";
 import { clearCompletedTodos } from "@/lib/todos";
 import { TodoItem } from "./TodoItem";
 import type { SortMode } from "./TodoArea";
@@ -41,11 +42,13 @@ function sortCompleted(todos: Todo[]): Todo[] {
 export function TodoList({
   sort,
   expandedId,
+  activeTagIds,
   onExpand,
   onCollapse,
 }: {
   sort: SortMode;
   expandedId: string | null;
+  activeTagIds: Set<string>;
   onExpand: (id: string) => void;
   onCollapse: () => void;
 }) {
@@ -59,6 +62,12 @@ export function TodoList({
         .toArray()
         .then((all) => all.filter((t) => t.sync_status !== "deleting")),
     [],
+  );
+
+  const todoTagsLinks = useLiveQuery(
+    () => db.todo_tags.toArray(),
+    [],
+    [] as TodoTag[],
   );
 
   if (todos === undefined) {
@@ -75,11 +84,18 @@ export function TodoList({
     );
   }
 
+  const linksByTodo = buildLinksByTodo(todoTagsLinks);
+  const activeTagIdsArr = Array.from(activeTagIds);
+  const filterByTag = (t: Todo) =>
+    matchesTagFilter(linksByTodo, t.id, activeTagIdsArr);
+
   const active = sortActive(
-    todos.filter((t) => !t.completed),
+    todos.filter((t) => !t.completed && filterByTag(t)),
     sort,
   );
-  const completed = sortCompleted(todos.filter((t) => t.completed));
+  const completed = sortCompleted(
+    todos.filter((t) => t.completed && filterByTag(t)),
+  );
   const completedShown = completed.slice(0, completedVisible);
   const hasMore = completed.length > completedVisible;
 
