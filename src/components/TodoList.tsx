@@ -1,11 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, type Todo } from "@/lib/db";
 import { TodoItem } from "./TodoItem";
 import type { SortMode } from "./TodoArea";
 
-function sortTodos(todos: Todo[], mode: SortMode): Todo[] {
+function sortActive(todos: Todo[], mode: SortMode): Todo[] {
   const copy = [...todos];
   switch (mode) {
     case "due":
@@ -30,6 +31,10 @@ function sortTodos(todos: Todo[], mode: SortMode): Todo[] {
   return copy;
 }
 
+function sortCompleted(todos: Todo[]): Todo[] {
+  return [...todos].sort((a, b) => b.updated_at - a.updated_at);
+}
+
 export function TodoList({
   sort,
   expandedId,
@@ -41,6 +46,8 @@ export function TodoList({
   onExpand: (id: string) => void;
   onCollapse: () => void;
 }) {
+  const [showCompleted, setShowCompleted] = useState(false);
+
   const todos = useLiveQuery(
     () =>
       db.todos
@@ -63,19 +70,68 @@ export function TodoList({
     );
   }
 
-  const sorted = sortTodos(todos, sort);
+  const active = sortActive(
+    todos.filter((t) => !t.completed),
+    sort,
+  );
+  const completed = sortCompleted(todos.filter((t) => t.completed));
 
   return (
-    <ul className="flex flex-col gap-1">
-      {sorted.map((todo) => (
-        <TodoItem
-          key={todo.id}
-          todo={todo}
-          expanded={expandedId === todo.id}
-          onExpand={() => onExpand(todo.id)}
-          onCollapse={onCollapse}
-        />
-      ))}
-    </ul>
+    <div className="flex flex-col gap-4">
+      {active.length > 0 ? (
+        <ul className="flex flex-col gap-1">
+          {active.map((todo) => (
+            <TodoItem
+              key={todo.id}
+              todo={todo}
+              expanded={expandedId === todo.id}
+              onExpand={() => onExpand(todo.id)}
+              onCollapse={onCollapse}
+            />
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-neutral-400 text-center py-4">
+          Nothing to do. {completed.length > 0 && `${completed.length} done.`}
+        </p>
+      )}
+
+      {completed.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={() => setShowCompleted((v) => !v)}
+            className="flex items-center gap-1 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 self-start"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`h-3 w-3 transition-transform ${showCompleted ? "rotate-90" : ""}`}
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+            Completed ({completed.length})
+          </button>
+          {showCompleted && (
+            <ul className="flex flex-col gap-1">
+              {completed.map((todo) => (
+                <TodoItem
+                  key={todo.id}
+                  todo={todo}
+                  expanded={expandedId === todo.id}
+                  onExpand={() => onExpand(todo.id)}
+                  onCollapse={onCollapse}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
