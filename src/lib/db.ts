@@ -8,6 +8,8 @@ export type Todo = {
   description: string;
   completed: boolean;
   due_at: number | null;
+  recurrence_rule: string | null;
+  recurrence_series_id: string | null;
   created_at: number;
   updated_at: number;
   sync_status: SyncStatus;
@@ -54,6 +56,22 @@ db.version(3)
       .toCollection()
       .modify((todo: Partial<Todo>) => {
         if (todo.description === undefined) todo.description = "";
+      });
+  });
+
+db.version(4)
+  .stores({
+    todos: "id, completed, due_at, created_at, updated_at, sync_status",
+    meta: "key",
+  })
+  .upgrade((tx) => {
+    return tx
+      .table("todos")
+      .toCollection()
+      .modify((todo: Partial<Todo>) => {
+        if (todo.recurrence_rule === undefined) todo.recurrence_rule = null;
+        if (todo.recurrence_series_id === undefined)
+          todo.recurrence_series_id = null;
       });
   });
 

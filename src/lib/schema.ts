@@ -18,6 +18,8 @@ export const todos = pgTable(
     completed: boolean("completed").notNull().default(false),
     due_at: timestamp("due_at", { withTimezone: true }),
     notified_at: timestamp("notified_at", { withTimezone: true }),
+    recurrence_rule: text("recurrence_rule"),
+    recurrence_series_id: uuid("recurrence_series_id"),
     created_at: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

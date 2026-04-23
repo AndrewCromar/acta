@@ -2,6 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { deleteTodo, toggleTodo, updateTodo } from "@/lib/todos";
+import {
+  parseRule,
+  stringifyRule,
+  summarizeRule,
+  type RecurrenceFreq,
+  type RecurrenceRule,
+} from "@/lib/recurrence";
 import type { Todo } from "@/lib/db";
 
 function toLocalInputValue(ms: number | null): string {
@@ -38,6 +45,7 @@ export function TodoItem({
   const [title, setTitle] = useState(todo.title);
   const [description, setDescription] = useState(todo.description);
   const [dueInput, setDueInput] = useState(toLocalInputValue(todo.due_at));
+  const rule = parseRule(todo.recurrence_rule);
   const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -73,6 +81,29 @@ export function TodoItem({
     if (newDue !== todo.due_at) {
       await updateTodo(todo.id, { due_at: newDue });
     }
+  }
+
+  async function handleFreqChange(freq: RecurrenceFreq | "") {
+    if (!freq) {
+      await updateTodo(todo.id, { recurrence_rule: null });
+      return;
+    }
+    const next: RecurrenceRule = { freq, until: rule?.until ?? null };
+    await updateTodo(todo.id, { recurrence_rule: stringifyRule(next) });
+  }
+
+  async function handleUntilChange(value: string) {
+    if (!rule) return;
+    const until = value ? new Date(value).getTime() : null;
+    const next: RecurrenceRule = { freq: rule.freq, until };
+    await updateTodo(todo.id, { recurrence_rule: stringifyRule(next) });
+  }
+
+  function toUntilInput(ms: number | null): string {
+    if (ms === null) return "";
+    const d = new Date(ms);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }
 
   const overdue =
@@ -156,16 +187,43 @@ export function TodoItem({
           </button>
         )}
 
-        {!expanded && todo.due_at !== null && (
-          <span
-            className={`text-xs flex-shrink-0 ${
-              overdue
-                ? "text-red-600 dark:text-red-400"
-                : "text-neutral-500 dark:text-neutral-400"
-            }`}
-          >
-            {formatDueShort(todo.due_at)}
-          </span>
+        {!expanded && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {rule && (
+              <span
+                aria-label="Repeats"
+                title={summarizeRule(rule)}
+                className="text-neutral-500 dark:text-neutral-400"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-3 w-3"
+                >
+                  <polyline points="23 4 23 10 17 10" />
+                  <polyline points="1 20 1 14 7 14" />
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" />
+                  <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14" />
+                </svg>
+              </span>
+            )}
+            {todo.due_at !== null && (
+              <span
+                className={`text-xs ${
+                  overdue
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-neutral-500 dark:text-neutral-400"
+                }`}
+              >
+                {formatDueShort(todo.due_at)}
+              </span>
+            )}
+          </div>
         )}
       </div>
 
@@ -196,6 +254,36 @@ export function TodoItem({
               className="w-full max-w-full min-w-0 box-border rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-2 py-1 text-base outline-none focus:border-neutral-500"
             />
           </label>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-xs text-neutral-500 dark:text-neutral-400">
+              Repeats
+            </span>
+            <div className="flex gap-2">
+              <select
+                value={rule?.freq ?? ""}
+                onChange={(e) =>
+                  handleFreqChange(e.target.value as RecurrenceFreq | "")
+                }
+                className="font-sans flex-1 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-2 py-1 text-base outline-none focus:border-neutral-500"
+              >
+                <option value="">Never</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+              {rule && (
+                <input
+                  type="date"
+                  value={toUntilInput(rule.until)}
+                  onChange={(e) => handleUntilChange(e.target.value)}
+                  aria-label="Repeat until"
+                  className="flex-1 min-w-0 box-border rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-2 py-1 text-base outline-none focus:border-neutral-500"
+                />
+              )}
+            </div>
+          </div>
 
           <div className="flex items-center justify-between pt-1">
             <button

@@ -1,19 +1,27 @@
 import { db, type Todo } from "./db";
+import { computeNext, parseRule } from "./recurrence";
 
 export async function createTodo(
   title: string,
-  extra: { description?: string; due_at?: number | null } = {},
+  extra: {
+    description?: string;
+    due_at?: number | null;
+    recurrence_rule?: string | null;
+  } = {},
 ): Promise<Todo> {
   const trimmed = title.trim();
   if (!trimmed) throw new Error("Title cannot be empty");
 
   const now = Date.now();
+  const id = crypto.randomUUID();
   const todo: Todo = {
-    id: crypto.randomUUID(),
+    id,
     title: trimmed,
     description: extra.description?.trim() ?? "",
     completed: false,
     due_at: extra.due_at ?? null,
+    recurrence_rule: extra.recurrence_rule ?? null,
+    recurrence_series_id: extra.recurrence_rule ? id : null,
     created_at: now,
     updated_at: now,
     sync_status: "pending",
@@ -25,17 +33,44 @@ export async function createTodo(
 export async function toggleTodo(id: string): Promise<void> {
   const existing = await db.todos.get(id);
   if (!existing) return;
+  const nowTs = Date.now();
+  const becomingCompleted = !existing.completed;
+
   await db.todos.update(id, {
-    completed: !existing.completed,
-    updated_at: Date.now(),
+    completed: becomingCompleted,
+    updated_at: nowTs,
     sync_status: "pending",
   });
+
+  if (!becomingCompleted) return;
+  const rule = parseRule(existing.recurrence_rule);
+  if (!rule) return;
+
+  const base = existing.due_at ?? nowTs;
+  const nextDate = computeNext(new Date(base), rule);
+  if (!nextDate) return;
+
+  const nextId = crypto.randomUUID();
+  const nextTodo: Todo = {
+    id: nextId,
+    title: existing.title,
+    description: existing.description,
+    completed: false,
+    due_at: nextDate.getTime(),
+    recurrence_rule: existing.recurrence_rule,
+    recurrence_series_id: existing.recurrence_series_id ?? existing.id,
+    created_at: nowTs,
+    updated_at: nowTs,
+    sync_status: "pending",
+  };
+  await db.todos.add(nextTodo);
 }
 
 export type TodoPatch = {
   title?: string;
   description?: string;
   due_at?: number | null;
+  recurrence_rule?: string | null;
 };
 
 export async function updateTodo(id: string, patch: TodoPatch): Promise<void> {
@@ -53,6 +88,17 @@ export async function updateTodo(id: string, patch: TodoPatch): Promise<void> {
   }
   if (patch.due_at !== undefined) {
     update.due_at = patch.due_at;
+  }
+  if (patch.recurrence_rule !== undefined) {
+    update.recurrence_rule = patch.recurrence_rule;
+    if (patch.recurrence_rule === null) {
+      update.recurrence_series_id = null;
+    } else {
+      const existing = await db.todos.get(id);
+      if (existing && !existing.recurrence_series_id) {
+        update.recurrence_series_id = existing.id;
+      }
+    }
   }
   await db.todos.update(id, update);
 }

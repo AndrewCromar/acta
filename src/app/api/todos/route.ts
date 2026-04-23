@@ -18,6 +18,8 @@ type UpsertBody = {
   description?: string;
   completed?: boolean;
   due_at?: string | null;
+  recurrence_rule?: string | null;
+  recurrence_series_id?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -60,6 +62,12 @@ export async function POST(request: Request) {
     description: typeof body.description === "string" ? body.description : "",
     completed: !!body.completed,
     due_at: newDue,
+    recurrence_rule:
+      typeof body.recurrence_rule === "string" ? body.recurrence_rule : null,
+    recurrence_series_id:
+      typeof body.recurrence_series_id === "string"
+        ? body.recurrence_series_id
+        : null,
     created_at: body.created_at ? new Date(body.created_at) : now,
     updated_at: body.updated_at ? new Date(body.updated_at) : now,
   };
@@ -74,6 +82,8 @@ export async function POST(request: Request) {
         description: values.description,
         completed: values.completed,
         due_at: values.due_at,
+        recurrence_rule: values.recurrence_rule,
+        recurrence_series_id: values.recurrence_series_id,
         updated_at: values.updated_at,
         ...(dueChanged ? { notified_at: null } : {}),
       },
