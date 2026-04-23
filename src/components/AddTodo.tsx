@@ -28,7 +28,7 @@ export function AddTodo() {
         onChange={(e) => setTitle(e.target.value)}
         placeholder="What needs doing?"
         autoFocus
-        className="flex-1 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500 dark:focus:border-neutral-400"
+        className="flex-1 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-base outline-none focus:border-neutral-500 dark:focus:border-neutral-400"
       />
       <button
         type="submit"

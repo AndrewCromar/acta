@@ -58,7 +58,7 @@ export function TodoItem({ todo }: { todo: Todo }) {
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commitRename}
           onKeyDown={handleKey}
-          className="flex-1 bg-transparent outline-none border-b border-neutral-400 text-sm"
+          className="flex-1 bg-transparent outline-none border-b border-neutral-400 text-base"
         />
       ) : (
         <button
