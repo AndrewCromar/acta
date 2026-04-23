@@ -5,6 +5,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { AddTodo } from "./AddTodo";
 import { EnableNotifications } from "./EnableNotifications";
 import { TagFilter } from "./TagFilter";
+import { TagManager } from "./TagManager";
 import { ThemeToggle } from "./ThemeToggle";
 import { TodoList } from "./TodoList";
 import { db } from "@/lib/db";
@@ -32,6 +33,7 @@ export function TodoArea() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [activeTagIds, setActiveTagIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -86,6 +88,26 @@ export function TodoArea() {
             <ThemeToggle />
             <button
               type="button"
+              onClick={() => setTagManagerOpen(true)}
+              aria-label="Manage tags"
+              className="rounded-md border border-neutral-300 dark:border-neutral-700 p-2 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-900"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+              >
+                <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                <line x1="7" y1="7" x2="7.01" y2="7" />
+              </svg>
+            </button>
+            <button
+              type="button"
               onClick={handleRefresh}
               disabled={refreshing}
               aria-label="Refresh"
@@ -127,6 +149,11 @@ export function TodoArea() {
           onCollapse={() => setExpandedId(null)}
         />
       </div>
+
+      <TagManager
+        open={tagManagerOpen}
+        onClose={() => setTagManagerOpen(false)}
+      />
     </>
   );
 }

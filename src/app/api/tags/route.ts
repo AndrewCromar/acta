@@ -66,18 +66,40 @@ export async function POST(request: Request) {
       return Response.json({ error: "forbidden" }, { status: 403 });
     }
     if (existing[0]) {
-      const [updated] = await db
-        .update(tags)
-        .set({ name })
-        .where(and(eq(tags.id, body.id), eq(tags.user_id, user.id)))
-        .returning();
-      return Response.json({ tag: updated });
+      try {
+        const [updated] = await db
+          .update(tags)
+          .set({ name })
+          .where(and(eq(tags.id, body.id), eq(tags.user_id, user.id)))
+          .returning();
+        return Response.json({ tag: updated });
+      } catch (err) {
+        const e = err as { code?: string };
+        if (e.code === "23505") {
+          return Response.json(
+            { error: `A tag named "${name}" already exists` },
+            { status: 409 },
+          );
+        }
+        throw err;
+      }
     }
-    const [inserted] = await db
-      .insert(tags)
-      .values({ id: body.id, user_id: user.id, name })
-      .returning();
-    return Response.json({ tag: inserted });
+    try {
+      const [inserted] = await db
+        .insert(tags)
+        .values({ id: body.id, user_id: user.id, name })
+        .returning();
+      return Response.json({ tag: inserted });
+    } catch (err) {
+      const e = err as { code?: string };
+      if (e.code === "23505") {
+        return Response.json(
+          { error: `A tag named "${name}" already exists` },
+          { status: 409 },
+        );
+      }
+      throw err;
+    }
   }
 
   const existingByName = await db

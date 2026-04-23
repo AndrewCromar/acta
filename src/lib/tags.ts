@@ -37,6 +37,24 @@ export async function createTag(name: string): Promise<Tag> {
   return tag;
 }
 
+export async function renameTag(id: string, name: string): Promise<void> {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Tag name cannot be empty");
+  const existing = await findTagByName(trimmed);
+  if (existing && existing.id !== id) {
+    throw new Error(`A tag named "${trimmed}" already exists`);
+  }
+  await db.tags.update(id, { name: trimmed, sync_status: "pending" });
+}
+
+export async function countTodosWithTag(tagId: string): Promise<number> {
+  const links = await db.todo_tags
+    .where("tag_id")
+    .equals(tagId)
+    .toArray();
+  return links.filter((l) => l.sync_status !== "deleting").length;
+}
+
 export async function deleteTag(id: string): Promise<void> {
   await db.tags.update(id, { sync_status: "deleting" });
   const links = await db.todo_tags.where("tag_id").equals(id).toArray();
