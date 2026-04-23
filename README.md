@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# todo_app
 
-## Getting Started
+Personal iPhone-friendly todo PWA. Offline-first, cloud-synced, with push reminders. Deployed at **https://todo.andrewcromar.org**.
 
-First, run the development server:
+Not open for contributions — just my own thing. Rebrand to `acta` is planned (see issue #21).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Stack
+
+- **Next.js 16** (App Router, Turbopack) + TypeScript + Tailwind v4
+- **Neon Postgres** via Drizzle ORM (`drizzle-kit push` for migrations)
+- **Dexie.js** for local IndexedDB — the app is offline-first; the server is the canonical copy and the client reconciles on a 30s + focus sync loop
+- **web_auth** (auth.andrewcromar.org) for passwordless email-code login; session cookie is scoped to `.andrewcromar.org` and shared across subdomains
+- **web-push** + hand-written service worker for PWA reminders; cron triggered externally via cron-job.org
+- Deployed on Vercel, DNS via Cloudflare
+
+## Dev
+
+Requires Node 20+ and an `.env.local` (not checked in) with:
+
+```
+DATABASE_URL=postgres://...@neon.tech/...
+NEXT_PUBLIC_AUTH_BASE_URL=https://auth.andrewcromar.org
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+VAPID_SUBJECT=mailto:you@example.com
+CRON_SECRET=...
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+```bash
+npm install
+npm run dev       # next dev
+npm run db:push   # apply schema changes to Neon (loads .env.local automatically)
+npm run build
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Repo layout
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+  app/                  App Router routes (pages + /api)
+  components/           Client components (TodoArea, AddTodo, TodoItem, ...)
+  lib/
+    auth.ts             getUser() server-side, validates session with web_auth
+    db.ts               Dexie (local IndexedDB)
+    db-server.ts        Neon HTTP client
+    schema.ts           Drizzle schema
+    sync.ts             offline-first reconciliation
+    prefs.ts            user prefs (sort mode etc.)
+    todos.ts            client-side mutation helpers
+public/
+  sw.js                 service worker (push handler, notification actions)
+AGENTS.md               notes for Claude Code when working on this repo
+```
 
-## Learn More
+## Notes for future-me
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `main` is prod; Vercel auto-deploys.
+- No branch protection. Feature branches named `feat/*`, fast-forward merges only.
+- Schema changes run through `drizzle-kit push` (not a migration file) because this is a personal project and I don't care about rollback.
+- `AGENTS.md` / `CLAUDE.md` at the repo root are read by Claude Code.
