@@ -110,9 +110,9 @@ export function TodoList({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 min-w-0 w-full">
       {active.length > 0 ? (
-        <ul className="flex flex-col gap-1">
+        <ul className="flex flex-col gap-1 min-w-0 w-full">
           {active.map((todo) => (
             <TodoItem
               key={todo.id}
@@ -128,8 +128,8 @@ export function TodoList({
       )}
 
       {completed.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-1 min-w-0 w-full">
+          <div className="flex items-center justify-between min-w-0">
             <button
               type="button"
               onClick={() => setShowCompleted((v) => !v)}
@@ -162,7 +162,7 @@ export function TodoList({
           </div>
           {showCompleted && (
             <>
-              <ul className="flex flex-col gap-1">
+              <ul className="flex flex-col gap-1 min-w-0 w-full">
                 {completedShown.map((todo) => (
                   <TodoItem
                     key={todo.id}
