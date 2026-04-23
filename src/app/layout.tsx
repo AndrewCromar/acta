@@ -14,11 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Todo PWA",
+  title: "acta",
   description: "Personal todo app with reminders",
   appleWebApp: {
     capable: true,
-    title: "Todo",
+    title: "acta",
     statusBarStyle: "black-translucent",
   },
 };
@@ -41,6 +41,19 @@ export default function RootLayout({
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <link
+          rel="icon"
+          href="/icon-light.svg"
+          type="image/svg+xml"
+          media="(prefers-color-scheme: light)"
+        />
+        <link
+          rel="icon"
+          href="/icon-dark.svg"
+          type="image/svg+xml"
+          media="(prefers-color-scheme: dark)"
+        />
+        <link rel="apple-touch-icon" href="/icon-dark.svg" />
       </head>
       <body className="min-h-full flex flex-col">
         <AuthBar />

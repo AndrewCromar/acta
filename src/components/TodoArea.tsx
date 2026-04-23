@@ -63,7 +63,7 @@ export function TodoArea() {
   return (
     <>
       <div className="sticky top-0 z-10 bg-[var(--background)] flex flex-col gap-3 pt-4 pb-3 border-b border-neutral-200 dark:border-neutral-800">
-        <h1 className="text-2xl font-semibold">Todos</h1>
+        <h1 className="text-2xl font-semibold">acta</h1>
         <EnableNotifications />
 
         <div className="flex items-center justify-between gap-2">
