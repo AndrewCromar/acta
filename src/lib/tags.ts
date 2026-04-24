@@ -74,6 +74,23 @@ export async function countTodosWithTag(tagId: string): Promise<number> {
   return links.filter((l) => l.sync_status !== "deleting").length;
 }
 
+export async function reapOrphanTags(candidateTagIds?: string[]): Promise<void> {
+  const ids =
+    candidateTagIds ??
+    (await db.tags.toArray())
+      .filter((t) => t.sync_status !== "deleting")
+      .map((t) => t.id);
+
+  for (const id of ids) {
+    const tag = await db.tags.get(id);
+    if (!tag || tag.sync_status === "deleting") continue;
+    const count = await countTodosWithTag(id);
+    if (count === 0) {
+      await db.tags.update(id, { sync_status: "deleting" });
+    }
+  }
+}
+
 export async function deleteTag(id: string): Promise<void> {
   await db.tags.update(id, { sync_status: "deleting" });
   const links = await db.todo_tags.where("tag_id").equals(id).toArray();
@@ -161,6 +178,7 @@ export async function removeTagFromTodo(
     todoId,
     current.map((t) => t.id).filter((id) => id !== tagId),
   );
+  await reapOrphanTags([tagId]);
 }
 
 export function matchesTagFilter(

@@ -1,5 +1,6 @@
 import { db, type Todo } from "./db";
 import { computeNext, parseRule } from "./recurrence";
+import { reapOrphanTags } from "./tags";
 
 export async function createTodo(
   title: string,
@@ -108,10 +109,23 @@ export async function renameTodo(id: string, title: string): Promise<void> {
 }
 
 export async function deleteTodo(id: string): Promise<void> {
+  const links = await db.todo_tags.where("todo_id").equals(id).toArray();
+  const tagIds = links.map((l) => l.tag_id);
+
   await db.todos.update(id, {
     sync_status: "deleting",
     updated_at: Date.now(),
   });
+  await db.transaction("rw", db.todo_tags, async () => {
+    for (const link of links) {
+      if (link.sync_status !== "deleting") {
+        await db.todo_tags.update([link.todo_id, link.tag_id], {
+          sync_status: "deleting",
+        });
+      }
+    }
+  });
+  if (tagIds.length > 0) await reapOrphanTags(tagIds);
 }
 
 export async function clearCompletedTodos(): Promise<number> {
@@ -120,13 +134,28 @@ export async function clearCompletedTodos(): Promise<number> {
     .filter((t) => t.completed && t.sync_status !== "deleting")
     .toArray();
   if (completed.length === 0) return 0;
-  await db.transaction("rw", db.todos, async () => {
+
+  const completedIds = new Set(completed.map((t) => t.id));
+  const links = await db.todo_tags
+    .filter((l) => completedIds.has(l.todo_id))
+    .toArray();
+  const affectedTagIds = Array.from(new Set(links.map((l) => l.tag_id)));
+
+  await db.transaction("rw", db.todos, db.todo_tags, async () => {
     for (const t of completed) {
       await db.todos.update(t.id, {
         sync_status: "deleting",
         updated_at: now,
       });
     }
+    for (const link of links) {
+      if (link.sync_status !== "deleting") {
+        await db.todo_tags.update([link.todo_id, link.tag_id], {
+          sync_status: "deleting",
+        });
+      }
+    }
   });
+  if (affectedTagIds.length > 0) await reapOrphanTags(affectedTagIds);
   return completed.length;
 }

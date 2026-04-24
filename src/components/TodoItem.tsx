@@ -4,6 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { toggleTodo } from "@/lib/todos";
 import { parseRule, summarizeRule } from "@/lib/recurrence";
 import { getTagsForTodo } from "@/lib/tags";
+import { linkify } from "@/lib/text";
 import type { Tag, Todo } from "@/lib/db";
 
 function formatDueShort(ms: number): string {
@@ -38,8 +39,22 @@ export function TodoItem({
 
   return (
     <li className="rounded-lg border border-transparent hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors min-w-0 w-full overflow-hidden">
-      <div className="flex items-center gap-3 py-2 px-3 min-w-0 w-full">
-        <label className="relative flex-shrink-0 cursor-pointer inline-flex">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onOpen}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onOpen();
+          }
+        }}
+        className="flex items-center gap-3 py-2 px-3 min-w-0 w-full cursor-pointer"
+      >
+        <label
+          className="relative flex-shrink-0 cursor-pointer inline-flex"
+          onClick={(e) => e.stopPropagation()}
+        >
           <input
             type="checkbox"
             checked={todo.completed}
@@ -65,28 +80,22 @@ export function TodoItem({
           </span>
         </label>
 
-        <button
-          type="button"
-          onClick={onOpen}
-          className="flex-1 min-w-0 overflow-hidden text-left cursor-pointer block"
-        >
-          <div className="flex flex-col min-w-0 w-full">
-            <span
-              className={`block truncate text-sm ${
-                todo.completed
-                  ? "line-through text-neutral-400 dark:text-neutral-500"
-                  : "text-neutral-900 dark:text-neutral-100"
-              }`}
-            >
-              {todo.title}
+        <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
+          <span
+            className={`block truncate text-sm ${
+              todo.completed
+                ? "line-through text-neutral-400 dark:text-neutral-500"
+                : "text-neutral-900 dark:text-neutral-100"
+            }`}
+          >
+            {todo.title}
+          </span>
+          {todo.description && (
+            <span className="block truncate text-xs text-neutral-500 dark:text-neutral-400">
+              {linkify(todo.description)}
             </span>
-            {todo.description && (
-              <span className="block truncate text-xs text-neutral-500 dark:text-neutral-400">
-                {todo.description}
-              </span>
-            )}
-          </div>
-        </button>
+          )}
+        </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
           {tags.length > 0 && (

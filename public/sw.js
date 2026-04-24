@@ -1,3 +1,6 @@
+// acta-sw v2 — bumped 2026-04-24 for notification actions rollout
+const SW_VERSION = "acta-sw-v2";
+
 self.addEventListener("install", () => {
   self.skipWaiting();
 });
