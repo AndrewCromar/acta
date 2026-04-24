@@ -1,8 +1,8 @@
-# acta
+# tasks
 
-Personal iPhone-friendly todo PWA. Offline-first, cloud-synced, with push reminders. Deployed at **https://todo.andrewcromar.org**.
+Personal iPhone-friendly todo PWA. Offline-first, cloud-synced, with push reminders. Deployed at **https://todo.andrewcromar.org** (will move to `tasks.andrewcromar.org`).
 
-Named "acta" — Latin / Greek for "things done". Not open for contributions — just my own thing.
+Not open for contributions — just my own thing.
 
 ## Stack
 
@@ -39,9 +39,10 @@ npm run build
 ```
 src/
   app/                  App Router routes (pages + /api)
-  components/           Client components (TodoArea, AddTodo, TodoItem, TagInput, ThemeToggle, …)
+  components/           Client components (TodoArea, TodoItem, TodoModal, TagInput, ThemeToggle, …)
   lib/
     auth.ts             getUser() server-side, validates session with web_auth
+    chrono.ts           natural-language date parsing helper
     db.ts               Dexie (local IndexedDB)
     db-server.ts        Neon HTTP client
     schema.ts           Drizzle schema
@@ -49,25 +50,27 @@ src/
     prefs.ts            user prefs (sort mode etc.)
     recurrence.ts       rule parsing + next-occurrence math for repeating todos
     tags.ts             tag + todo-tag client helpers
+    text.tsx            linkify URLs in descriptions
     todos.ts            client-side mutation helpers
 public/
   sw.js                 service worker (push handler, notification actions)
-  icon-light.svg        checkmark icon (light variant — for light browser theme)
-  icon-dark.svg         checkmark icon (dark variant — apple-touch-icon and PWA)
+  icon-light.svg        checkmark icon (light variant)
+  icon-dark.svg         checkmark icon (dark variant — apple-touch-icon, PWA)
 AGENTS.md               notes for Claude Code when working on this repo
 ```
 
 ## Features
 
 - Offline-first: edit todos while offline, they sync when the tab has connectivity
-- Expand-on-click detail view with title, description, due date, recurrence rule, tags
-- Natural-language due dates in the quick-add ("dentist tuesday 4pm" → sets due)
-- Sort by created / due / alphabetical — synced per-user across devices
+- Edit-in-modal detail view with title, description, due date, recurrence rule, tags
+- Natural-language due dates in quick-add ("dentist tuesday 4pm" → sets due)
+- Sort by created / due / due-by-day (grouped) / alphabetical — synced per-user across devices
 - Completed section is collapsible, paginated, clearable
 - Repeating todos: daily / weekly / monthly / yearly with optional end date
-- Tags with autocomplete + filter chips in the toolbar
+- Tags with autocomplete + filter chips in the toolbar; orphan tags auto-reaped
 - Light / dark / system theme toggle
-- Push notifications for upcoming due dates + "Mark complete" action on the notification
+- Push notifications: 15-min-before reminder + 9 AM daily digest (due today + overdue)
+- "Mark complete" action on reminder notifications
 
 ## Notes for future-me
 
